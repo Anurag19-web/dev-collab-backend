@@ -7,6 +7,8 @@ try {
 
 const { name, email, password } = req.body;
 
+const userId = generateUserId();
+
 const userExists = await User.findOne({ email });
 
 if (userExists) {
@@ -19,7 +21,8 @@ const hashedPassword = await bcrypt.hash(password, salt);
 const user = await User.create({
     name,
     email,
-    password: hashedPassword
+    password: hashedPassword,
+    userId
 });
 
 res.status(201).json(user);
