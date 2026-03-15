@@ -1,9 +1,13 @@
 import express from "express";
-import { getProfile } from "../controllers/userController.js";
-import authMiddleware from "../middleware/authMiddleware.js";
+import { getProfile, getUserByUserId, followUser } from "../controllers/userController.js";
+import protect from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.get("/profile", authMiddleware, getProfile);
+router.get("/profile", protect, getProfile);
+
+router.get("/:userId", getUserByUserId);
+
+router.patch("/follow/:userId", followUser);
 
 export default router;
