@@ -19,6 +19,7 @@ export const getProfile = async (req, res) => {
 };
 
 
+
 // GET user by userId (for visiting profiles)
 export const getUserByUserId = async (req, res) => {
 
@@ -39,6 +40,40 @@ export const getUserByUserId = async (req, res) => {
 };
 
 
+
+// UPDATE USER PROFILE
+export const updateUserProfile = async (req, res) => {
+
+  try {
+
+    const user = await User.findOneAndUpdate(
+      { userId: req.params.userId },
+      {
+        name: req.body.name,
+        role: req.body.role,
+        bio: req.body.bio,
+        github: req.body.github,
+        linkedin: req.body.linkedin,
+        portfolio: req.body.portfolio,
+        skills: req.body.skills
+      },
+      { new: true }
+    ).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(user);
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+
+};
+
+
+
 // FOLLOW / UNFOLLOW user
 export const followUser = async (req, res) => {
 
@@ -57,7 +92,6 @@ export const followUser = async (req, res) => {
 
     if (isFollowing) {
 
-      // Unfollow
       userToFollow.followers = userToFollow.followers.filter(
         (id) => id !== currentUserId
       );
@@ -68,7 +102,6 @@ export const followUser = async (req, res) => {
 
     } else {
 
-      // Follow
       userToFollow.followers.push(currentUserId);
       currentUser.following.push(req.params.userId);
 
