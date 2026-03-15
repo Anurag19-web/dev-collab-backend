@@ -1,26 +1,34 @@
 import Snippet from "../models/Snippet.js";
+import User from "../models/User.js";
 
 
 // CREATE SNIPPET
 export const createSnippet = async (req, res) => {
   try {
 
-    const { title, code, language } = req.body;
+    const { title, description, language, code, user } = req.body;
+
+    // user = custom userId from frontend
+    const foundUser = await User.findOne({ userId: user });
+
+    if (!foundUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
     const snippet = await Snippet.create({
       title,
-      code,
+      description,
       language,
-      user: req.user._id
+      code,
+      author: foundUser._id
     });
 
     res.status(201).json(snippet);
 
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
-
 
 // GET ALL SNIPPETS (WITH LANGUAGE FILTER)
 export const getSnippets = async (req, res) => {
