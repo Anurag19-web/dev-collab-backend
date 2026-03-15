@@ -11,7 +11,7 @@ export const createSnippet = async (req, res) => {
       title,
       code,
       language,
-      user: req.user.id
+      user: req.user._id
     });
 
     res.status(201).json(snippet);
