@@ -161,3 +161,18 @@ export const addReview = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// GET SNIPPETS BY USER
+export const getSnippetsByUser = async (req, res) => {
+  try {
+
+    const snippets = await Snippet.find({
+      user: req.params.id
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json(snippets);
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
