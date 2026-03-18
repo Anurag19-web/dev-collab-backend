@@ -52,6 +52,13 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: ""
     },
+    profilePicture: {
+      type: String
+    },
+    
+    public_id: {
+      type: String
+    },
 
     followers: [
       {
