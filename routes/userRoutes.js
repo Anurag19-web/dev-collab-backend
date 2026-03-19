@@ -12,21 +12,17 @@ import upload from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
 
-
 // logged-in user profile
 router.get("/profile", protect, getProfile);
-
 
 // visit other user profile
 router.get("/:userId", getUserByUserId);
 
+// follow / unfollow user
+router.patch("/follow/:userId", followUser);
 
 // update profile
 router.patch("/:userId", updateUserProfile);
-
-
-// follow / unfollow user
-router.patch("/follow/:userId", followUser);
 
 router.patch("/update-profile/:id", upload.single("profilePicture"), async (req, res) => {
   try {
