@@ -79,4 +79,25 @@ router.delete("/delete-profile-image/:id", async (req, res) => {
   }
 });
 
+// 🔍 SEARCH USERS
+router.get("/search", async (req, res) => {
+  try {
+
+    const query = req.query.q;
+
+    if (!query) {
+      return res.json([]);
+    }
+
+    const users = await User.find({
+      name: { $regex: query, $options: "i" } // case-insensitive search
+    }).select("name userId profilePicture"); // return only needed fields
+
+    res.json(users);
+
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+});
+
 export default router;
