@@ -23,7 +23,7 @@ router.patch("/follow/:userId", followUser);
 
 // 🖼 Update profile (with image upload + replace)
 router.patch(
-  "/update-profile/:id",
+  "/update-profile/:userId",
   upload.single("profilePicture"),
   async (req, res) => {
     try {
@@ -45,7 +45,12 @@ router.patch(
 
       // 🧾 Update other fields
       user.name = req.body.name || user.name;
+      user.role = req.body.role || user.role;
       user.bio = req.body.bio || user.bio;
+      user.github = req.body.github || user.github;
+      user.linkedin = req.body.linkedin || user.linkedin;
+      user.portfolio = req.body.portfolio || user.portfolio;
+      user.skills = req.body.skills || user.skills;
 
       await user.save();
 
@@ -59,9 +64,9 @@ router.patch(
 
 
 // 🗑 Delete profile image
-router.delete("/delete-profile-image/:id", async (req, res) => {
+router.delete("/delete-profile-image/:userId", async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await User.findOne({ userId: req.params.userId });
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
