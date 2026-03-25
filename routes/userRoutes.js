@@ -27,7 +27,7 @@ router.patch(
   upload.single("profilePicture"),
   async (req, res) => {
     try {
-      const user = await User.findById(req.params.id);
+      const user = await User.findOne({ userId: req.params.userId });
 
       if (!user) {
         return res.status(404).json({ message: "User not found" });
