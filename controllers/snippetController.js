@@ -107,7 +107,6 @@ export const deleteSnippet = async (req, res) => {
   }
 };
 
-
 // LIKE / UNLIKE SNIPPET
 export const likeSnippet = async (req, res) => {
   try {
@@ -118,20 +117,22 @@ export const likeSnippet = async (req, res) => {
       return res.status(404).json({ message: "Snippet not found" });
     }
 
-    const userId = req.user.id;
+    const userId = req.body.userId; // ✅ Mongo _id from frontend
 
-    const alreadyLiked = snippet.likes.includes(userId);
+    if (!userId) {
+      return res.status(400).json({ message: "User ID required" });
+    }
+
+    const alreadyLiked = snippet.likes.some(
+      (id) => id.toString() === userId
+    );
 
     if (alreadyLiked) {
-
       snippet.likes = snippet.likes.filter(
         (id) => id.toString() !== userId
       );
-
     } else {
-
-      snippet.likes.push(userId);
-
+      snippet.likes.push(userId); // ✅ push Mongo _id
     }
 
     await snippet.save();
@@ -139,10 +140,10 @@ export const likeSnippet = async (req, res) => {
     res.status(200).json(snippet);
 
   } catch (error) {
+    console.log(error);
     res.status(500).json({ message: error.message });
   }
 };
-
 
 // ADD REVIEW / COMMENT
 export const addReview = async (req, res) => {
