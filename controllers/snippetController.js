@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Snippet from "../models/Snippet.js";
 import User from "../models/User.js";
 
@@ -111,28 +112,32 @@ export const deleteSnippet = async (req, res) => {
 export const likeSnippet = async (req, res) => {
   try {
 
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid snippet ID" });
+    }
+
     const snippet = await Snippet.findById(req.params.id);
 
     if (!snippet) {
       return res.status(404).json({ message: "Snippet not found" });
     }
 
-    const userId = req.body.userId; // ✅ Mongo _id from frontend
-
-    if (!userId) {
+    if (!req.body.userId) {
       return res.status(400).json({ message: "User ID required" });
     }
 
+    const userId = new mongoose.Types.ObjectId(req.body.userId);
+
     const alreadyLiked = snippet.likes.some(
-      (id) => id.toString() === userId
+      (id) => id.toString() === userId.toString()
     );
 
     if (alreadyLiked) {
       snippet.likes = snippet.likes.filter(
-        (id) => id.toString() !== userId
+        (id) => id.toString() !== userId.toString()
       );
     } else {
-      snippet.likes.push(userId); // ✅ push Mongo _id
+      snippet.likes.push(userId);
     }
 
     await snippet.save();
@@ -140,7 +145,7 @@ export const likeSnippet = async (req, res) => {
     res.status(200).json(snippet);
 
   } catch (error) {
-    console.log(error);
+    console.log("LIKE ERROR:", error); // 🔥 IMPORTANT
     res.status(500).json({ message: error.message });
   }
 };
@@ -155,8 +160,12 @@ export const addReview = async (req, res) => {
       return res.status(404).json({ message: "Snippet not found" });
     }
 
+    if (!req.body.userId || !req.body.comment) {
+      return res.status(400).json({ message: "UserId and comment required" });
+    }
+
     const review = {
-      user: req.user.id,
+      user: new mongoose.Types.ObjectId(req.body.userId),
       comment: req.body.comment
     };
 
@@ -176,7 +185,7 @@ export const getSnippetsByUser = async (req, res) => {
   try {
 
     const snippets = await Snippet.find({
-      user: req.params.id
+      author: req.params.id
     }).sort({ createdAt: -1 });
 
     res.status(200).json(snippets);
