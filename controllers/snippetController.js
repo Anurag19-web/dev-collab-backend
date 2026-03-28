@@ -6,10 +6,12 @@ import User from "../models/User.js";
 // CREATE SNIPPET
 export const createSnippet = async (req, res) => {
   try {
-
     const { title, description, language, code, user } = req.body;
 
-    // user = custom userId from frontend
+    if (!title || !language || !code || !user) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
     const foundUser = await User.findOne({ userId: user });
 
     if (!foundUser) {
@@ -21,27 +23,35 @@ export const createSnippet = async (req, res) => {
       description,
       language,
       code,
-      author: foundUser._id
+      author: foundUser._id,
     });
 
-    res.status(201).json(snippet);
+    const populatedSnippet = await snippet.populate(
+      "author",
+      "name userId profilePicture"
+    );
+
+    res.status(201).json(populatedSnippet);
 
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// GET ALL SNIPPETS (WITH LANGUAGE FILTER)
+
+
+// GET ALL SNIPPETS (WITH FILTER + POPULATE)
 export const getSnippets = async (req, res) => {
   try {
-
     const filter = {};
 
     if (req.query.language) {
       filter.language = req.query.language;
     }
 
-    const snippets = await Snippet.find(filter).sort({ createdAt: -1 });
+    const snippets = await Snippet.find(filter)
+      .populate("author", "name userId profilePicture")
+      .sort({ createdAt: -1 });
 
     res.status(200).json(snippets);
 
@@ -51,11 +61,17 @@ export const getSnippets = async (req, res) => {
 };
 
 
+
 // GET SINGLE SNIPPET
 export const getSnippetById = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid snippet ID" });
+    }
 
-    const snippet = await Snippet.findById(req.params.id);
+    const snippet = await Snippet.findById(req.params.id)
+      .populate("author", "name userId profilePicture")
+      .populate("reviews.user", "name profilePicture");
 
     if (!snippet) {
       return res.status(404).json({ message: "Snippet not found" });
@@ -69,48 +85,11 @@ export const getSnippetById = async (req, res) => {
 };
 
 
-// UPDATE SNIPPET
+
+// UPDATE SNIPPET (WITH AUTH CHECK)
 export const updateSnippet = async (req, res) => {
   try {
-
-    const snippet = await Snippet.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
-
-    if (!snippet) {
-      return res.status(404).json({ message: "Snippet not found" });
-    }
-
-    res.status(200).json(snippet);
-
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-
-// DELETE SNIPPET
-export const deleteSnippet = async (req, res) => {
-  try {
-
-    const snippet = await Snippet.findByIdAndDelete(req.params.id);
-
-    if (!snippet) {
-      return res.status(404).json({ message: "Snippet not found" });
-    }
-
-    res.status(200).json({ message: "Snippet deleted successfully" });
-
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// LIKE / UNLIKE SNIPPET
-export const likeSnippet = async (req, res) => {
-  try {
+    const { userId } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ message: "Invalid snippet ID" });
@@ -122,37 +101,36 @@ export const likeSnippet = async (req, res) => {
       return res.status(404).json({ message: "Snippet not found" });
     }
 
-    if (!req.body.userId) {
-      return res.status(400).json({ message: "User ID required" });
+    if (snippet.author.toString() !== userId) {
+      return res.status(403).json({ message: "Not authorized" });
     }
 
-    const userId = new mongoose.Types.ObjectId(req.body.userId);
-
-    const alreadyLiked = snippet.likes.some(
-      (id) => id.toString() === userId.toString()
-    );
-
-    if (alreadyLiked) {
-      snippet.likes = snippet.likes.filter(
-        (id) => id.toString() !== userId.toString()
-      );
-    } else {
-      snippet.likes.push(userId);
-    }
+    Object.assign(snippet, req.body);
 
     await snippet.save();
 
-    res.status(200).json(snippet);
+    const updatedSnippet = await snippet.populate(
+      "author",
+      "name userId profilePicture"
+    );
+
+    res.status(200).json(updatedSnippet);
 
   } catch (error) {
-    console.log("LIKE ERROR:", error); // 🔥 IMPORTANT
     res.status(500).json({ message: error.message });
   }
 };
 
-// ADD REVIEW / COMMENT
-export const addReview = async (req, res) => {
+
+
+// DELETE SNIPPET (WITH AUTH CHECK)
+export const deleteSnippet = async (req, res) => {
   try {
+    const { userId } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid snippet ID" });
+    }
 
     const snippet = await Snippet.findById(req.params.id);
 
@@ -160,33 +138,119 @@ export const addReview = async (req, res) => {
       return res.status(404).json({ message: "Snippet not found" });
     }
 
-    if (!req.body.userId || !req.body.comment) {
-      return res.status(400).json({ message: "UserId and comment required" });
+    if (snippet.author.toString() !== userId) {
+      return res.status(403).json({ message: "Not authorized" });
     }
 
-    const review = {
-      user: new mongoose.Types.ObjectId(req.body.userId),
-      comment: req.body.comment
-    };
+    await snippet.deleteOne();
 
-    snippet.reviews.push(review);
-
-    await snippet.save();
-
-    res.status(201).json(snippet);
+    res.status(200).json({ message: "Snippet deleted successfully" });
 
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+
+
+// LIKE / UNLIKE SNIPPET
+export const likeSnippet = async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid snippet ID" });
+    }
+
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Valid User ID required" });
+    }
+
+    const snippet = await Snippet.findById(req.params.id);
+
+    if (!snippet) {
+      return res.status(404).json({ message: "Snippet not found" });
+    }
+
+    const objectUserId = new mongoose.Types.ObjectId(userId);
+
+    const alreadyLiked = snippet.likes.some(
+      (id) => id.toString() === objectUserId.toString()
+    );
+
+    if (alreadyLiked) {
+      snippet.likes = snippet.likes.filter(
+        (id) => id.toString() !== objectUserId.toString()
+      );
+    } else {
+      snippet.likes.push(objectUserId);
+    }
+
+    await snippet.save();
+
+    res.status(200).json(snippet);
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+// ADD REVIEW / COMMENT
+export const addReview = async (req, res) => {
+  try {
+    const { userId, comment } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid snippet ID" });
+    }
+
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId) || !comment) {
+      return res.status(400).json({ message: "Valid userId and comment required" });
+    }
+
+    const snippet = await Snippet.findById(req.params.id);
+
+    if (!snippet) {
+      return res.status(404).json({ message: "Snippet not found" });
+    }
+
+    const review = {
+      user: new mongoose.Types.ObjectId(userId),
+      comment,
+    };
+
+    snippet.reviews.push(review);
+
+    await snippet.save();
+
+    const updatedSnippet = await snippet.populate(
+      "reviews.user",
+      "name profilePicture"
+    );
+
+    res.status(201).json(updatedSnippet);
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
 // GET SNIPPETS BY USER
 export const getSnippetsByUser = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
 
     const snippets = await Snippet.find({
-      author: req.params.id
-    }).sort({ createdAt: -1 });
+      author: req.params.id,
+    })
+      .populate("author", "name userId profilePicture")
+      .sort({ createdAt: -1 });
 
     res.status(200).json(snippets);
 
