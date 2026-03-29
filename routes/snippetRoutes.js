@@ -10,25 +10,22 @@ import {
   getSnippetsByUser
 } from "../controllers/snippetController.js";
 
-import authMiddleware from "../middleware/authMiddleware.js";
-
 const router = express.Router();
 
 router.post("/create", createSnippet);
 
 router.get("/", getSnippets);
 
-// ⭐ ADD THIS ROUTE
 router.get("/user/:id", getSnippetsByUser);
 
 router.get("/:id", getSnippetById);
 
-router.put("/:id", authMiddleware, updateSnippet);
+router.put("/:id", updateSnippet);
 
-router.delete("/:id", authMiddleware, deleteSnippet);
+router.delete("/:id", deleteSnippet);
 
-router.patch("/:id/like", authMiddleware, likeSnippet);
+router.patch("/:id/like", likeSnippet);
 
-router.post("/:id/review", authMiddleware, addReview);
+router.post("/:id/review", addReview);
 
 export default router;
