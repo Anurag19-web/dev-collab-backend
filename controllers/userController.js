@@ -78,42 +78,51 @@ export const updateUserProfile = async (req, res) => {
 export const followUser = async (req, res) => {
   try {
     const { currentUserId } = req.body;
+    const targetUserId = req.params.userId;
 
-    const userToFollow = await User.findOne({ userId: req.params.userId });
+    if (!currentUserId || !targetUserId) {
+      return res.status(400).json({ message: "Missing user IDs" });
+    }
+
+    const userToFollow = await User.findOne({ userId: targetUserId });
     const currentUser = await User.findOne({ userId: currentUserId });
 
     if (!userToFollow || !currentUser) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // ✅ FIX: ensure arrays exist
-    if (!userToFollow.followers) userToFollow.followers = [];
-    if (!currentUser.following) currentUser.following = [];
+    // ✅ ensure arrays always exist
+    userToFollow.followers = userToFollow.followers || [];
+    currentUser.following = currentUser.following || [];
 
     const isFollowing = userToFollow.followers.includes(currentUserId);
 
     if (isFollowing) {
+      // UNFOLLOW
       userToFollow.followers = userToFollow.followers.filter(
         (id) => id !== currentUserId
       );
 
       currentUser.following = currentUser.following.filter(
-        (id) => id !== req.params.userId
+        (id) => id !== targetUserId
       );
     } else {
+      // FOLLOW
       userToFollow.followers.push(currentUserId);
-      currentUser.following.push(req.params.userId);
+      currentUser.following.push(targetUserId);
     }
 
     await userToFollow.save();
     await currentUser.save();
 
-    res.json({
-      followers: userToFollow.followers
+    return res.status(200).json({
+      success: true,
+      followers: userToFollow.followers,
+      following: currentUser.following
     });
 
   } catch (error) {
     console.error("FOLLOW ERROR:", error);
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
