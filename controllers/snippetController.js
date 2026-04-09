@@ -66,7 +66,7 @@ export const getSnippetById = async (req, res) => {
 
     const snippet = await Snippet.findById(req.params.id)
       .populate("author", "name userId profilePicture")
-      .populate("reviews.user", "name profilePicture");
+      .populate("reviews.user", "name userId profilePicture");
 
     if (!snippet) {
       return res.status(404).json({ message: "Snippet not found" });
