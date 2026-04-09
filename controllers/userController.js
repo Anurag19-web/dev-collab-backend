@@ -76,9 +76,7 @@ export const updateUserProfile = async (req, res) => {
 
 // FOLLOW / UNFOLLOW user
 export const followUser = async (req, res) => {
-
   try {
-
     const { currentUserId } = req.body;
 
     const userToFollow = await User.findOne({ userId: req.params.userId });
@@ -88,10 +86,13 @@ export const followUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // ✅ FIX: ensure arrays exist
+    if (!userToFollow.followers) userToFollow.followers = [];
+    if (!currentUser.following) currentUser.following = [];
+
     const isFollowing = userToFollow.followers.includes(currentUserId);
 
     if (isFollowing) {
-
       userToFollow.followers = userToFollow.followers.filter(
         (id) => id !== currentUserId
       );
@@ -99,21 +100,20 @@ export const followUser = async (req, res) => {
       currentUser.following = currentUser.following.filter(
         (id) => id !== req.params.userId
       );
-
     } else {
-
       userToFollow.followers.push(currentUserId);
       currentUser.following.push(req.params.userId);
-
     }
 
     await userToFollow.save();
     await currentUser.save();
 
-    res.json(userToFollow);
+    res.json({
+      followers: userToFollow.followers
+    });
 
   } catch (error) {
+    console.error("FOLLOW ERROR:", error);
     res.status(500).json({ error: error.message });
   }
-
 };
