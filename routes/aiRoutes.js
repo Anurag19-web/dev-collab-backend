@@ -7,7 +7,7 @@ router.post("/explain-code", async (req, res) => {
     const { code } = req.body;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=YOUR_GEMINI_API_KEY`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: {
@@ -29,13 +29,25 @@ router.post("/explain-code", async (req, res) => {
 
     const data = await response.json();
 
-    const explanation =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    console.log("FULL GEMINI RESPONSE:", JSON.stringify(data, null, 2));
+
+    let explanation = "";
+
+    if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      explanation = data.candidates[0].content.parts[0].text;
+    } else if (data?.error) {
+      explanation = data.error.message;
+    } else {
+      explanation = "No AI response. Check API key or quota.";
+    }
 
     res.json({ explanation });
+
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "AI request failed" });
+    res.status(500).json({
+      explanation: "Server error while generating AI response"
+    });
   }
 });
 
