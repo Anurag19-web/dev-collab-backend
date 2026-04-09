@@ -1,13 +1,12 @@
 import express from "express";
-import { GoogleGenAI } from "@google/genai";
+import Groq from "groq-sdk"; // 1. Use the Groq SDK
 
 const router = express.Router();
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
+// 2. Initialize Groq with your API Key from .env
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
 });
-
-const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
 router.post("/explain-code", async (req, res) => {
   try {
@@ -19,38 +18,40 @@ router.post("/explain-code", async (req, res) => {
       });
     }
 
-    let explanation = null;
-    let lastError = null;
+    // 3. Call Groq (Fastest path)
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: "You are a helpful assistant that explains code step by step in simple language.",
+        },
+        {
+          role: "user",
+          content: `Explain this code:\n\n${code}`,
+        },
+      ],
+      // Llama 3.3 70B is smart and extremely fast on Groq
+      model: "llama-3.3-70b-versatile", 
+    });
 
-    for (let i = 0; i < 2; i++) {
-      try {
-        const response = await ai.models.generateContent({
-          model: "gemini-2.0-flash",
-          contents: `Explain this code step by step in simple language:\n\n${code}`,
-        });
-
-        explanation = response.text;
-
-        if (explanation) break;
-      } catch (err) {
-        lastError = err;
-        console.log("Gemini retrying... attempt", i + 1, err.message);
-        await delay(1000);
-      }
-    }
+    const explanation = chatCompletion.choices[0]?.message?.content;
 
     if (!explanation) {
-      console.log("GEMINI FAILED:", lastError);
-      return res.status(500).json({
-        explanation: "AI is currently busy. Please try again in a few seconds.",
-      });
+      throw new Error("Empty response from AI");
     }
 
     return res.json({ explanation });
+
   } catch (error) {
-    console.log("SERVER ERROR:", error);
+    console.error("GROQ/SERVER ERROR:", error);
+
+    // Specific handling for common errors
+    if (error.status === 401) {
+       return res.status(401).json({ explanation: "Invalid API Key. Check your .env file." });
+    }
+
     return res.status(500).json({
-      explanation: "Internal server error. Try again later.",
+      explanation: "AI is currently unavailable. Try again in a moment.",
     });
   }
 });
