@@ -12,9 +12,7 @@ const groq = new Groq({
 });
 
 
-// ===============================
-// 🤖 1. CODE EXPLANATION ROUTE
-// ===============================
+// CODE EXPLANATION ROUTE
 router.post("/explain-code", async (req, res) => {
   try {
     const { code, query } = req.body;
@@ -25,27 +23,82 @@ router.post("/explain-code", async (req, res) => {
       });
     }
 
-    const userPrompt =
-      query && query.trim() !== ""
-        ? query
-        : "Explain this code briefly for a developer.";
+    const q = (query || "").toLowerCase();
+
+    // 🤖 SMART MODE DETECTION
+    let rule = "";
+
+    // LINE BY LINE MODE
+    if (q.includes("line by line")) {
+      rule = `
+You are a senior coding tutor.
+
+Rules:
+- Explain EACH line separately
+- Mention line number (if possible)
+- Explain what each line does in simple words
+- Very detailed step-by-step breakdown
+- Use bullet points for each line
+      `;
+    }
+
+    // SHORT MODE
+    else if (q.includes("short") || q.includes("brief")) {
+      rule = `
+You are a coding assistant.
+
+Rules:
+- Very short explanation (max 80–100 words)
+- Only summary
+- No deep details
+- Use bullet points
+      `;
+    }
+
+    // DEEP / A TO Z MODE
+    else if (
+      q.includes("deep") ||
+      q.includes("a to z") ||
+      q.includes("full") ||
+      q.includes("complete")
+    ) {
+      rule = `
+You are an expert software engineer teacher.
+
+Rules:
+- No word limit
+- Explain from A to Z in detail
+- Include:
+  - overall purpose
+  - logic flow
+  - function breakdown
+  - step-by-step explanation
+  - edge cases
+  - real-world usage
+      `;
+    }
+
+    // DEFAULT MODE
+    else {
+      rule = `
+You are a helpful coding assistant.
+
+Rules:
+- Medium explanation
+- Use bullet points
+- Include summary + logic
+      `;
+    }
 
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         {
           role: "system",
-          content: `
-You are a professional AI coding assistant.
-
-Rules:
-- Keep response under 80 words
-- Use bullet points
-- Include: summary + key points + pro tip
-          `,
+          content: rule,
         },
         {
           role: "user",
-          content: `Code:\n${code}\n\nQuestion: ${userPrompt}`,
+          content: `Code:\n${code}\n\nUser request:\n${query}`,
         },
       ],
       model: "llama-3.3-70b-versatile",
@@ -66,10 +119,7 @@ Rules:
   }
 });
 
-
-// ===============================
-// 🚀 2. CODE GENERATION ROUTE (AUTOMATION)
-// ===============================
+// CODE GENERATION ROUTE (AUTOMATION)
 router.post("/generate-code", async (req, res) => {
   try {
     const { title, language } = req.body;
