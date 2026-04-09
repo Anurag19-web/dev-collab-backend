@@ -28,4 +28,6 @@ router.patch("/:id/like", likeSnippet);
 
 router.post("/:id/review", addReview);
 
+router.get("/:id/likes", getLikedUsers);
+
 export default router;

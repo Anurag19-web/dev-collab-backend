@@ -188,13 +188,41 @@ export const likeSnippet = async (req, res) => {
 
     await snippet.save();
 
-    res.status(200).json(snippet);
+    const updatedSnippet = await snippet.populate(
+      "likes",
+      "name profilePicture"
+    );
+
+    res.status(200).json(updatedSnippet);
 
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// GET LIKED USERS
+export const getLikedUsers = async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid snippet ID" });
+    }
+
+    const snippet = await Snippet.findById(req.params.id)
+      .populate("likes", "name profilePicture");
+
+    if (!snippet) {
+      return res.status(404).json({ message: "Snippet not found" });
+    }
+
+    res.status(200).json({
+      totalLikes: snippet.likes.length,
+      users: snippet.likes
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 
 // ADD REVIEW / COMMENT
