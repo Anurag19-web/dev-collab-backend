@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 import Snippet from "../models/Snippet.js";
 import User from "../models/User.js";
 
-
 // CREATE SNIPPET
 export const createSnippet = async (req, res) => {
   try {
@@ -38,8 +37,6 @@ export const createSnippet = async (req, res) => {
   }
 };
 
-
-
 // GET ALL SNIPPETS (WITH FILTER + POPULATE)
 export const getSnippets = async (req, res) => {
   try {
@@ -59,8 +56,6 @@ export const getSnippets = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-
 
 // GET SINGLE SNIPPET
 export const getSnippetById = async (req, res) => {
@@ -84,8 +79,6 @@ export const getSnippetById = async (req, res) => {
   }
 };
 
-
-
 // UPDATE SNIPPET (WITH AUTH CHECK)
 export const updateSnippet = async (req, res) => {
   try {
@@ -101,7 +94,15 @@ export const updateSnippet = async (req, res) => {
       return res.status(404).json({ message: "Snippet not found" });
     }
 
-    if (snippet.author.toString() !== userId) {
+    // ✅ Convert userId → Mongo _id
+    const user = await User.findOne({ userId });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // ✅ Authorization check
+    if (snippet.author.toString() !== user._id.toString()) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
@@ -121,8 +122,6 @@ export const updateSnippet = async (req, res) => {
   }
 };
 
-
-
 // DELETE SNIPPET (WITH AUTH CHECK)
 export const deleteSnippet = async (req, res) => {
   try {
@@ -138,7 +137,15 @@ export const deleteSnippet = async (req, res) => {
       return res.status(404).json({ message: "Snippet not found" });
     }
 
-    if (snippet.author.toString() !== userId) {
+    // ✅ Convert userId → Mongo _id
+    const user = await User.findOne({ userId });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // ✅ Authorization check
+    if (snippet.author.toString() !== user._id.toString()) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
@@ -150,8 +157,6 @@ export const deleteSnippet = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-
 
 // LIKE / UNLIKE SNIPPET
 export const likeSnippet = async (req, res) => {
@@ -224,7 +229,6 @@ export const getLikedUsers = async (req, res) => {
   }
 };
 
-
 // ADD REVIEW / COMMENT
 export const addReview = async (req, res) => {
   try {
@@ -265,17 +269,21 @@ export const addReview = async (req, res) => {
   }
 };
 
-
-
 // GET SNIPPETS BY USER
 export const getSnippetsByUser = async (req, res) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({ message: "Invalid user ID" });
+    const { id } = req.params;
+
+    // ✅ find user using custom userId
+    const user = await User.findOne({ userId: id }).select("_id");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
 
+    // ✅ use Mongo _id
     const snippets = await Snippet.find({
-      author: req.params.id,
+      author: user._id,
     })
       .populate("author", "name userId profilePicture")
       .sort({ createdAt: -1 });
