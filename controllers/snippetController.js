@@ -272,25 +272,13 @@ export const addReview = async (req, res) => {
 // GET SNIPPETS BY USER
 export const getSnippetsByUser = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    // ✅ find user using custom userId
-    const user = await User.findOne({ userId: id }).select("_id");
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // ✅ use Mongo _id
     const snippets = await Snippet.find({
-      author: user._id,
-    })
-      .populate("author", "name userId profilePicture")
-      .sort({ createdAt: -1 });
+      author: req.params.id   // ✅ matches _id
+    }).populate("author", "name userId profilePicture");
 
-    res.status(200).json(snippets);
+    res.json(snippets);
 
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
