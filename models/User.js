@@ -55,7 +55,7 @@ const userSchema = new mongoose.Schema(
     profilePicture: {
       type: String
     },
-    
+
     public_id: {
       type: String
     },
@@ -63,14 +63,16 @@ const userSchema = new mongoose.Schema(
     followers: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User"
+        ref: "User",
+        default: []
       }
     ],
 
     following: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User"
+        ref: "User",
+        default: []
       }
     ]
   },

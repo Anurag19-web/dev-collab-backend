@@ -80,6 +80,12 @@ export const followUser = async (req, res) => {
     const targetUserId = req.params.userId;
     const currentUserId = req.body.currentUserId;
 
+    if (!targetUserId || !currentUserId) {
+      return res.status(400).json({
+        message: "Missing user IDs"
+      });
+    }
+
     const userToFollow = await User.findById(targetUserId);
     const currentUser = await User.findById(currentUserId);
 
@@ -93,11 +99,11 @@ export const followUser = async (req, res) => {
 
     if (isFollowing) {
       userToFollow.followers = userToFollow.followers.filter(
-        (id) => id.toString() !== currentUserId
+        id => id.toString() !== currentUserId
       );
 
       currentUser.following = currentUser.following.filter(
-        (id) => id.toString() !== targetUserId
+        id => id.toString() !== targetUserId
       );
     } else {
       userToFollow.followers.push(currentUserId);
@@ -107,13 +113,16 @@ export const followUser = async (req, res) => {
     await userToFollow.save();
     await currentUser.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       followers: userToFollow.followers,
       following: currentUser.following
     });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
+    console.error("FOLLOW ERROR:", error);
+    return res.status(500).json({
+      message: "Internal Server Error",
+      error: error.message
+    });
   }
 };
