@@ -7,7 +7,8 @@ import {
   getSnippets,
   likeSnippet,
   updateSnippet,
-  getSnippetsByUser
+  getSnippetsByUser,
+  getLikedUsers
 } from "../controllers/snippetController.js";
 
 const router = express.Router();
