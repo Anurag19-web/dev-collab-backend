@@ -1,43 +1,56 @@
 import express from "express";
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 
 const router = express.Router();
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
 });
+
+const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
 router.post("/explain-code", async (req, res) => {
   try {
     const { code } = req.body;
 
     if (!code) {
-      return res.status(400).json({ explanation: "Code is required" });
+      return res.status(400).json({
+        explanation: "Code is required",
+      });
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "user",
-          content: `Explain this code step by step in simple language:\n\n${code}`,
-        },
-      ],
-    });
+    let explanation = null;
+    let lastError = null;
 
-    const explanation = completion?.choices?.[0]?.message?.content;
+    for (let i = 0; i < 2; i++) {
+      try {
+        const response = await ai.models.generateContent({
+          model: "gemini-2.0-flash",
+          contents: `Explain this code step by step in simple language:\n\n${code}`,
+        });
+
+        explanation = response.text;
+
+        if (explanation) break;
+      } catch (err) {
+        lastError = err;
+        console.log("Gemini retrying... attempt", i + 1, err.message);
+        await delay(1000);
+      }
+    }
 
     if (!explanation) {
-      console.log("FULL OPENAI RESPONSE:", completion);
+      console.log("GEMINI FAILED:", lastError);
       return res.status(500).json({
-        explanation: "No explanation generated. Try again.",
+        explanation: "AI is currently busy. Please try again in a few seconds.",
       });
     }
 
     return res.json({ explanation });
   } catch (error) {
-    console.log("OPENAI ERROR:", error);
+    console.log("SERVER ERROR:", error);
     return res.status(500).json({
-      explanation: error.message || "Internal server error",
+      explanation: "Internal server error. Try again later.",
     });
   }
 });
