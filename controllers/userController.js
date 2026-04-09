@@ -77,37 +77,27 @@ export const updateUserProfile = async (req, res) => {
 // FOLLOW / UNFOLLOW user
 export const followUser = async (req, res) => {
   try {
-    const { currentUserId } = req.body;
-    const targetUserId = req.params.userId;
+    const targetUserId = req.params.userId; // Mongo _id
+    const currentUserId = req.body.currentUserId; // Mongo _id
 
-    if (!currentUserId || !targetUserId) {
-      return res.status(400).json({ message: "Missing user IDs" });
-    }
-
-    const userToFollow = await User.findOne({ userId: targetUserId });
-    const currentUser = await User.findOne({ userId: currentUserId });
+    const userToFollow = await User.findById(targetUserId);
+    const currentUser = await User.findById(currentUserId);
 
     if (!userToFollow || !currentUser) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // ✅ ensure arrays always exist
-    userToFollow.followers = userToFollow.followers || [];
-    currentUser.following = currentUser.following || [];
-
     const isFollowing = userToFollow.followers.includes(currentUserId);
 
     if (isFollowing) {
-      // UNFOLLOW
       userToFollow.followers = userToFollow.followers.filter(
-        (id) => id !== currentUserId
+        (id) => id.toString() !== currentUserId
       );
 
       currentUser.following = currentUser.following.filter(
-        (id) => id !== targetUserId
+        (id) => id.toString() !== targetUserId
       );
     } else {
-      // FOLLOW
       userToFollow.followers.push(currentUserId);
       currentUser.following.push(targetUserId);
     }
@@ -115,14 +105,13 @@ export const followUser = async (req, res) => {
     await userToFollow.save();
     await currentUser.save();
 
-    return res.status(200).json({
-      success: true,
+    res.status(200).json({
       followers: userToFollow.followers,
       following: currentUser.following
     });
 
   } catch (error) {
-    console.error("FOLLOW ERROR:", error);
-    return res.status(500).json({ message: "Internal Server Error" });
+    console.error(error);
+    res.status(500).json({ error: error.message });
   }
 };
