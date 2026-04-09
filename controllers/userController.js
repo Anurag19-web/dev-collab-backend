@@ -77,8 +77,8 @@ export const updateUserProfile = async (req, res) => {
 // FOLLOW / UNFOLLOW user
 export const followUser = async (req, res) => {
   try {
-    const targetUserId = req.params.userId; // Mongo _id
-    const currentUserId = req.body.currentUserId; // Mongo _id
+    const targetUserId = req.params.userId;
+    const currentUserId = req.body.currentUserId;
 
     const userToFollow = await User.findById(targetUserId);
     const currentUser = await User.findById(currentUserId);
@@ -87,7 +87,9 @@ export const followUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const isFollowing = userToFollow.followers.includes(currentUserId);
+    const isFollowing = userToFollow.followers
+      .map(id => id.toString())
+      .includes(currentUserId);
 
     if (isFollowing) {
       userToFollow.followers = userToFollow.followers.filter(
