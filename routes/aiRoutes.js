@@ -12,12 +12,14 @@ const groq = new Groq({
 });
 
 
-// CODE EXPLANATION ROUTE
+// ===============================
+// 🤖 CODE EXPLANATION ROUTE
+// ===============================
 router.post("/explain-code", async (req, res) => {
   try {
     const { code, query } = req.body;
 
-    if (!code) {
+    if (!code || code.trim() === "") {
       return res.status(400).json({
         explanation: "No code provided to explain.",
       });
@@ -25,37 +27,62 @@ router.post("/explain-code", async (req, res) => {
 
     const q = (query || "").toLowerCase();
 
-    // 🤖 SMART MODE DETECTION
     let rule = "";
 
-    // LINE BY LINE MODE
+    // ===============================
+    // 📌 LINE BY LINE MODE
+    // ===============================
     if (q.includes("line by line")) {
       rule = `
-You are a senior coding tutor.
+You are an expert coding tutor.
 
-Rules:
-- Explain EACH line separately
-- Mention line number (if possible)
-- Explain what each line does in simple words
-- Very detailed step-by-step breakdown
-- Use bullet points for each line
+OUTPUT FORMAT:
+
+📌 CODE EXPLANATION (LINE BY LINE)
+
+🔹 Line 1:
+Explain what this line does in simple words.
+
+🔹 Line 2:
+Explain what this line does in simple words.
+
+(continue for all lines in same format)
+
+📌 FINAL SUMMARY:
+- Key point 1
+- Key point 2
+
+RULES:
+- Use emojis and headings
+- Be very clear and beginner friendly
+- Strictly follow format
       `;
     }
 
-    // SHORT MODE
+    // ===============================
+    // 📌 SHORT MODE
+    // ===============================
     else if (q.includes("short") || q.includes("brief")) {
       rule = `
 You are a coding assistant.
 
-Rules:
-- Very short explanation (max 80–100 words)
-- Only summary
-- No deep details
-- Use bullet points
+OUTPUT FORMAT:
+
+📌 SHORT EXPLANATION
+
+🔹 Summary:
+- Only main idea in 4–6 bullet points
+- No deep explanation
+
+RULES:
+- Keep it very short and simple
+- No line-by-line explanation
       `;
     }
 
-    // DEEP / A TO Z MODE
+    // ===============================
+    // 📌 DEEP MODE (A → Z)
+    // ===============================
     else if (
       q.includes("deep") ||
       q.includes("a to z") ||
@@ -63,30 +90,55 @@ Rules:
       q.includes("complete")
     ) {
       rule = `
-You are an expert software engineer teacher.
+You are an expert software engineering teacher.
 
-Rules:
-- No word limit
-- Explain from A to Z in detail
-- Include:
-  - overall purpose
-  - logic flow
-  - function breakdown
-  - step-by-step explanation
-  - edge cases
-  - real-world usage
+OUTPUT FORMAT:
+
+📌 COMPLETE CODE EXPLANATION (A → Z)
+
+🔹 Overview:
+Explain full purpose of code
+
+🔹 Logic Flow:
+Step-by-step working
+
+🔹 Detailed Breakdown:
+Explain important parts in depth
+
+🔹 Edge Cases:
+Mention possible issues
+
+🔹 Real World Use:
+Where this code is used
+
+📌 FINAL SUMMARY:
+- Key learning points
+
+RULES:
+- Very detailed explanation
+- Use emojis and headings
+- Strict formatting required
       `;
     }
 
-    // DEFAULT MODE
+    // ===============================
+    // 📌 DEFAULT MODE
+    // ===============================
     else {
       rule = `
 You are a helpful coding assistant.
 
-Rules:
-- Medium explanation
+OUTPUT FORMAT:
+
+📌 CODE EXPLANATION
+
+🔹 Summary:
+- Medium level explanation
+- Key points only
+
+RULES:
+- Clean and simple
 - Use bullet points
-- Include summary + logic
       `;
     }
 
@@ -98,11 +150,11 @@ Rules:
         },
         {
           role: "user",
-          content: `Code:\n${code}\n\nUser request:\n${query}`,
+          content: `Code:\n${code}\n\nUser Request:\n${query}`,
         },
       ],
       model: "llama-3.3-70b-versatile",
-      temperature: 0.5,
+      temperature: 0.4,
     });
 
     const explanation =
@@ -119,7 +171,10 @@ Rules:
   }
 });
 
-// CODE GENERATION ROUTE (AUTOMATION)
+
+// ===============================
+// ⚡ CODE GENERATION ROUTE
+// ===============================
 router.post("/generate-code", async (req, res) => {
   try {
     const { title, language } = req.body;
@@ -139,10 +194,9 @@ You are an expert software engineer AI.
 
 Rules:
 - Generate ONLY ${language} code
-- Code must match the user requirement
-- No explanation text
-- No markdown formatting (no triple backticks)
-- Clean, production-ready code only
+- No explanation
+- No markdown (no backticks)
+- Clean production-ready code only
 - Add minimal comments inside code
           `,
         },
@@ -159,9 +213,10 @@ Rules:
       chatCompletion.choices[0]?.message?.content ||
       "Could not generate code.";
 
-    // 🧹 CLEANING RESPONSE (VERY IMPORTANT)
+    // 🧹 CLEAN OUTPUT
     code = code
-      .replace(/```[\w]*|```/g, "") // remove markdown backticks
+      .replace(/```[\w]*|```/g, "")
+      .replace(/^\s*\n/gm, "")
       .trim();
 
     return res.json({ code });
